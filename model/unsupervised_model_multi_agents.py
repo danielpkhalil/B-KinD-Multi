@@ -713,7 +713,7 @@ class Model(nn.Module):
             box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
             reset_image: reset the image embeddings for SAM
         '''
-        grounding_caption = "mouse.rat"
+        grounding_caption = "rat"
         box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
         frame_idx = 0
         segtracker = SegTracker(segtracker_args, sam_args, aot_args)
@@ -739,6 +739,9 @@ class Model(nn.Module):
         for iii in range(len(pred_masks)):
             pred_masks[iii] = np.repeat(pred_masks[iii][np.newaxis, :, :], self.K, axis=0)
 
+        while len(pred_masks) < self.num_agents:
+            pred_masks.append(pred_masks[-1])
+
         del pred_masks[self.num_agents+1:]
 
         # Stack the arrays along a new axis
@@ -749,7 +752,11 @@ class Model(nn.Module):
 
         tensor_masks = torch.from_numpy(masks)
 
-        resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.num_agents, 1, self.K, 64, 64), mode='bicubic', align_corners=False)
+        tensor_masks = tensor_masks.to(torch.float32)
+
+        tensor_masks = tensor_masks.to('cuda')
+
+        resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.K, 64, 64), mode='trilinear', align_corners=False)
 
         return resized_tensor_masks
 
