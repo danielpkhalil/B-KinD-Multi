@@ -125,11 +125,17 @@ class Decoder(nn.Module):
     
 class Model(nn.Module):
     def __init__(self, n_kps=10, output_dim=200, pretrained=True, 
-                 output_shape=(64, 64), num_agents=2):
+                 output_shape=(64, 64), num_agents=2, segtracker=None, grounding_caption='', box_threshold=0.35, text_threshold=0.5, box_size_threshold=0.5, reset_image=True):
         
         super(Model, self).__init__()
         self.K = n_kps
         self.num_agents = num_agents
+        self.segtracker = segtracker
+        self.grounding_caption = grounding_caption
+        self.box_threshold = box_threshold
+        self.text_threshold = text_threshold
+        self.box_size_threshold = box_size_threshold
+        self.reset_image = reset_image
         
         channel_settings = [2048, 1024, 512, 256]
         self.output_shape = output_shape
@@ -570,20 +576,21 @@ class Model(nn.Module):
         # else:
         #     # max locations
         #     bbox_masks = self.get_wing_bbox(heatmap).detach()
-            
-        heatmap_fly1 = masks[0]*heatmap
+        if len(masks) > 0:
+            heatmap_fly1 = masks[0]*heatmap
 
+            # Step 1: Convert the PyTorch tensor to a NumPy array
+            numpy_image = heatmap_fly1[0][0].cpu().detach().numpy()  # Convert GPU tensor to CPU tensor if necessary
 
-        # Step 1: Convert the PyTorch tensor to a NumPy array
-        numpy_image = heatmap_fly1[0][0].cpu().detach().numpy()  # Convert GPU tensor to CPU tensor if necessary
+            nump = heatmap[0][0].cpu().detach().numpy()
 
-        nump = heatmap[0][0].cpu().detach().numpy()
+            npbmask = masks[0].cpu().detach().numpy()
 
-        npbmask = masks[0].cpu().detach().numpy()
+            b1 = masks[0][0][0].cpu().detach().numpy()
 
-        b1 = masks[0][0][0].cpu().detach().numpy()
-
-        b2 = masks[0][0][1].cpu().detach().numpy()
+            b2 = masks[0][0][1].cpu().detach().numpy()
+        else:
+            heatmap_fly1 = heatmap
 
 
         H = heatmap_fly1.size(2)
@@ -610,14 +617,22 @@ class Model(nn.Module):
         
         cov_1 = ((heatmap_fly1 * (x - u_x_1.view(-1, self.K, 1, 1)) * (y - u_y_1.view(-1, self.K, 1, 1))).sum(2).sum(2)) #.clamp(min=1e-6)
         # bboxes = bbox_masks[0, :, :3]
-        bboxes = masks[0, :, :]
+        if len(masks) > 0:
+            bboxes = masks[0, :, :]
+        else:
+            bboxes = []
+
         confidence = heatmap_fly1.max(dim=-1)[0].max(dim=-1)[0]
                 
         # print(u_x[0], u_y[0])
         
         for ii in range(1, self.num_agents):
             #if find_peaks:
-            heatmap_fly2 = masks[ii]*heatmap
+            if len(masks) > 0:
+                heatmap_fly2 = masks[ii]*heatmap
+            else:
+                heatmap_fly2 = heatmap
+
             # if find_peaks:
             #     bbox_wing = self.get_wing_bbox(heatmap_fly2)
 
@@ -665,7 +680,9 @@ class Model(nn.Module):
             var_y_1 = torch.cat([var_y_1, var_y_2], dim = 1)
             cov_1 = torch.cat([cov_1, cov_2], dim = 1)
             # bboxes = torch.cat([bboxes, bbox_masks[ii, :, :3]], dim = 1)
-            bboxes = torch.cat([bboxes, masks[ii, :, :]], dim = 1)
+            if len(masks) > 0:
+                bboxes = torch.cat([bboxes, masks[ii, :, :]], dim = 1)
+
             confidence = torch.cat([confidence, confidence_2], dim=1)
 
         # return u_x, u_y, (var_x, var_y, cov) , bboxes #(heatmap, xs, ys)
@@ -696,28 +713,28 @@ class Model(nn.Module):
 
     def getMask(self, frame):
         #segment frame
-        sam_args['generator_args'] = {
-            'points_per_side': 30,
-            'pred_iou_thresh': 0.8,
-            'stability_score_thresh': 0.9,
-            'crop_n_layers': 1,
-            'crop_n_points_downscale_factor': 2,
-            'min_mask_region_area': 200,
-        }
-        # Set Text args
-        '''
-        parameter:
-            grounding_caption: Text prompt to detect objects in key-frames
-            box_threshold: threshold for box 
-            text_threshold: threshold for label(text)
-            box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-            reset_image: reset the image embeddings for SAM
-        '''
-        grounding_caption = "rat"
-        box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-        frame_idx = 0
-        segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-        segtracker.restart_tracker()
+        # sam_args['generator_args'] = {
+        #     'points_per_side': 30,
+        #     'pred_iou_thresh': 0.8,
+        #     'stability_score_thresh': 0.9,
+        #     'crop_n_layers': 1,
+        #     'crop_n_points_downscale_factor': 2,
+        #     'min_mask_region_area': 200,
+        # }
+        # # Set Text args
+        # '''
+        # parameter:
+        #     grounding_caption: Text prompt to detect objects in key-frames
+        #     box_threshold: threshold for box
+        #     text_threshold: threshold for label(text)
+        #     box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
+        #     reset_image: reset the image embeddings for SAM
+        # '''
+        # grounding_caption = "rat"
+        # box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
+        # frame_idx = 0
+        # segtracker = SegTracker(segtracker_args, sam_args, aot_args)
+        # segtracker.restart_tracker()
         with torch.cuda.amp.autocast():
             frame = frame.cpu().numpy()
             frame = np.squeeze(frame, axis=0)
@@ -725,38 +742,39 @@ class Model(nn.Module):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = (frame*255).astype(np.uint8)
 
-            pred_masks, annotated_frame = segtracker.detect_and_seg(frame, grounding_caption, box_threshold,
-                                                                       text_threshold, box_size_threshold)
+            pred_masks, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
+                                                                       self.text_threshold, self.box_size_threshold)
             torch.cuda.empty_cache()
             #obj_ids = np.unique(pred_mask)
             #obj_ids = obj_ids[obj_ids != 0]
             #print("processed frame {}, obj_num {}".format(frame_idx, len(obj_ids)), end='\n')
 
-            del segtracker
+            #del segtracker
             torch.cuda.empty_cache()
             gc.collect()
 
         for iii in range(len(pred_masks)):
             pred_masks[iii] = np.repeat(pred_masks[iii][np.newaxis, :, :], self.K, axis=0)
+        if len(pred_masks) > 0:
+            while len(pred_masks) < self.num_agents:
+                pred_masks.append(pred_masks[-1])
+            del pred_masks[self.num_agents+1:]
 
-        while len(pred_masks) < self.num_agents:
-            pred_masks.append(pred_masks[-1])
+            # Stack the arrays along a new axis
+            masks = np.stack(pred_masks, axis=0)
 
-        del pred_masks[self.num_agents+1:]
+            # Add an extra dimension to get the desired shape
+            masks = np.expand_dims(masks, axis=1)
 
-        # Stack the arrays along a new axis
-        masks = np.stack(pred_masks, axis=0)
+            tensor_masks = torch.from_numpy(masks)
 
-        # Add an extra dimension to get the desired shape
-        masks = np.expand_dims(masks, axis=1)
+            tensor_masks = tensor_masks.to(torch.float32)
 
-        tensor_masks = torch.from_numpy(masks)
+            tensor_masks = tensor_masks.to('cuda')
 
-        tensor_masks = tensor_masks.to(torch.float32)
-
-        tensor_masks = tensor_masks.to('cuda')
-
-        resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.K, 64, 64), mode='trilinear', align_corners=False)
+            resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.K, 64, 64), mode='trilinear', align_corners=False)
+        else:
+            resized_tensor_masks = []
 
         return resized_tensor_masks
 
