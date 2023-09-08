@@ -1,0 +1,7 @@
+piq==0.7.0
+torch==1.12.0
+opencv-python
+matplotlib
+seaborn
+pyyaml
+h5py
