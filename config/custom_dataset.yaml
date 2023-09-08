@@ -1,0 +1,36 @@
+# Dataset
+dataset: custom_dataset
+data: data/flyvfly
+
+# Training information
+workers: 4
+epochs: 105
+start_epoch: 0
+schedule: 20
+batch_size: 1
+lr: 0.001
+momentum: 0.9
+weight_decay: 0.0001
+print_freq: 20
+pretrained: True
+gpu: 0
+val_schedule: 5
+curriculum: 5
+
+# Path to save checkpoint
+checkpoint: checkpoint/flyvfly
+# Specify number of keypoints
+nkpts: 10
+num_agents: 2
+
+# Hyperparameters
+image_size: 256
+frame_gap: 20
+bounding_box: False  # Only False allowed for the custom dataset
+
+perc_weight: [100.0, 1.6, 2.3, 1.8, 2.8, 100.0] 
+
+
+# Specify model path
+# resume: checkpoint/custom_dataset/saved/scheckpoint.pth.tar
+evaluate: False
