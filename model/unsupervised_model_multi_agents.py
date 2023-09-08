@@ -7,6 +7,7 @@ import torch.nn.functional as nnf
 from .resnet_updated import conv3x3
 from .resnet_updated import resnetbank50all as resnetbank50
 from .globalNet import globalNet
+from SAMT.sam.segment_anything.modeling import image_encoder
 
 import math
 # from .tusk import tusk
@@ -156,7 +157,16 @@ class Model(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
         
-        self.encoder = resnetbank50(pretrained=pretrained)
+        #self.encoder = resnetbank50(pretrained=pretrained)
+
+        #SAM ViT
+        CKPT_PATH = 'SAMT/ckpt/sam_vit_b_01ec64.pth'
+        checkpoint = torch.load(CKPT_PATH)
+        encoder_weights = {k: v for k, v in checkpoint.items() if k.startswith('image_encoder.') and not k.endswith(('rel_pos_h', 'rel_pos_w'))}
+        SAM_ViT = image_encoder.ImageEncoderViT()
+        SAM_ViT.load_state_dict(encoder_weights, strict=False)
+        self.encoder = SAM_ViT
+        #check input and output (embedd) dimmensions, also freeze for not backprop
 
     def get_keypoints(self, x):
         x_res = self.encoder(x)
@@ -192,6 +202,10 @@ class Model(nn.Module):
 
         x_masks = self.getMask(x)
         x_norm = normalize(x)
+        h, w = x_norm.shape[-2:]
+        padh = self.encoder.img_size - h
+        padw = self.encoder.img_size - w
+        x_norm = nnf.pad(x_norm, (0, padw, 0, padh))
         x_res = self.encoder(x_norm)
         
         if tr_x is not None:

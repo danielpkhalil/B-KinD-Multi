@@ -78,7 +78,7 @@ def main_worker(gpu, ngpus_per_node, args):
         box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
         reset_image: reset the image embeddings for SAM
     '''
-    grounding_caption = "white rat and black rat"
+    grounding_caption = "fly"
     box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
     frame_idx = 0
     segtracker = SegTracker(segtracker_args, sam_args, aot_args)
