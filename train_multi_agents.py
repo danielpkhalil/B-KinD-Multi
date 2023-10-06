@@ -78,7 +78,7 @@ def main_worker(gpu, ngpus_per_node, args):
         box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
         reset_image: reset the image embeddings for SAM
     '''
-    grounding_caption = "fly"
+    grounding_caption = "rat"
     box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
     frame_idx = 0
     segtracker = SegTracker(segtracker_args, sam_args, aot_args)
@@ -152,32 +152,32 @@ def main_worker(gpu, ngpus_per_node, args):
 
     is_best = True
 
-    #init segtracker
-    #################################################################################
-    # segment frame
-    sam_args['generator_args'] = {
-        'points_per_side': 30,
-        'pred_iou_thresh': 0.8,
-        'stability_score_thresh': 0.9,
-        'crop_n_layers': 1,
-        'crop_n_points_downscale_factor': 2,
-        'min_mask_region_area': 200,
-    }
-    # Set Text args
-    '''
-    parameter:
-        grounding_caption: Text prompt to detect objects in key-frames
-        box_threshold: threshold for box 
-        text_threshold: threshold for label(text)
-        box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-        reset_image: reset the image embeddings for SAM
-    '''
-    grounding_caption = "rat"
-    box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-    frame_idx = 0
-    segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-    segtracker.restart_tracker()
-    #################################################################################
+    # #init segtracker
+    # #################################################################################
+    # # segment frame
+    # sam_args['generator_args'] = {
+    #     'points_per_side': 30,
+    #     'pred_iou_thresh': 0.8,
+    #     'stability_score_thresh': 0.9,
+    #     'crop_n_layers': 1,
+    #     'crop_n_points_downscale_factor': 2,
+    #     'min_mask_region_area': 200,
+    # }
+    # # Set Text args
+    # '''
+    # parameter:
+    #     grounding_caption: Text prompt to detect objects in key-frames
+    #     box_threshold: threshold for box
+    #     text_threshold: threshold for label(text)
+    #     box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
+    #     reset_image: reset the image embeddings for SAM
+    # '''
+    # grounding_caption = "rat"
+    # box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
+    # frame_idx = 0
+    # segtracker = SegTracker(segtracker_args, sam_args, aot_args)
+    # segtracker.restart_tracker()
+    # #################################################################################
     
     rloss = []
 

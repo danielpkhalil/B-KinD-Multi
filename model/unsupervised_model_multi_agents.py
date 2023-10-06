@@ -157,15 +157,17 @@ class Model(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
         
-        #self.encoder = resnetbank50(pretrained=pretrained)
+        self.encoder = resnetbank50(pretrained=pretrained)
 
         #SAM ViT
-        CKPT_PATH = 'SAMT/ckpt/sam_vit_b_01ec64.pth'
-        checkpoint = torch.load(CKPT_PATH)
-        encoder_weights = {k: v for k, v in checkpoint.items() if k.startswith('image_encoder.') and not k.endswith(('rel_pos_h', 'rel_pos_w'))}
-        SAM_ViT = image_encoder.ImageEncoderViT()
-        SAM_ViT.load_state_dict(encoder_weights, strict=False)
-        self.encoder = SAM_ViT
+        # CKPT_PATH = 'SAMT/ckpt/sam_vit_b_01ec64.pth'
+        # checkpoint = torch.load(CKPT_PATH)
+        # encoder_weights = {k: v for k, v in checkpoint.items() if k.startswith('image_encoder.') and not k.endswith(('rel_pos_h', 'rel_pos_w'))}
+        # SAM_ViT = image_encoder.ImageEncoderViT2()
+        # SAM_ViT.load_state_dict(encoder_weights, strict=False)
+        # for param in SAM_ViT.parameters():
+        #     param.requires_grad = False
+        # self.encoder = SAM_ViT
         #check input and output (embedd) dimmensions, also freeze for not backprop
 
     def get_keypoints(self, x):
@@ -202,10 +204,12 @@ class Model(nn.Module):
 
         x_masks = self.getMask(x)
         x_norm = normalize(x)
-        h, w = x_norm.shape[-2:]
-        padh = self.encoder.img_size - h
-        padw = self.encoder.img_size - w
-        x_norm = nnf.pad(x_norm, (0, padw, 0, padh))
+
+        # h, w = x_norm.shape[-2:]
+        # padh = self.encoder.img_size - h
+        # padw = self.encoder.img_size - w
+        # x_norm = nnf.pad(x_norm, (0, padw, 0, padh))
+
         x_res = self.encoder(x_norm)
         
         if tr_x is not None:
@@ -235,7 +239,7 @@ class Model(nn.Module):
         u_x, u_y, covs, _, confidence = self._mapTokpt(heatmap, x_masks, find_peaks=find_peaks, use_bbox=use_bbox)
         
         if tr_x is None:
-            return (u_x, u_y), kpt_out[-1]
+            return (u_x, u_y), kpt_out[-1], confidence
 
         tr_kpt_conds = []
         

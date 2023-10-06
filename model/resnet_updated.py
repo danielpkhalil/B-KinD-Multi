@@ -114,6 +114,7 @@ class Bottleneck(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(x)
 
+
         out += identity
         out = self.relu(out)
 
@@ -390,6 +391,8 @@ class ResNetBankAll(nn.Module):
         x = self.bn1(x)
         x_1 = self.relu(x)
         x = self.maxpool(x_1)
+
+        #match THIS DIMENSIONS THEN COPY WHATS AFTER
 
         x0 = self.layer1(x)
         x1 = self.layer2(x0)

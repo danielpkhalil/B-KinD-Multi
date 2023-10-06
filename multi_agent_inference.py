@@ -5,7 +5,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from model.unsupervised_model_multi_agents import Model as BKinD_multi
-from model.kpt_detector import Model
+#from model.kpt_detector import Model
 
 from SAMT.SegTracker import SegTracker
 from SAMT.model_args import aot_args, sam_args, segtracker_args
@@ -19,9 +19,9 @@ import os
 
 ## Input parameters #################################
 nKps = 10
-num_agents = 2
+num_agents = 4
 gpu = 0  # None if gpu is not available
-resume = 'checkpoint/CalMS21/checkpoint.pth.tar'
+resume = 'checkpoint/custom_dataset/checkpoint.pth.tar'
 sample_path = 'sample_images'
 image_size = 256
 #####################################################
@@ -51,7 +51,7 @@ text_threshold: threshold for label(text)
 box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
 reset_image: reset the image embeddings for SAM
 '''
-grounding_caption = "fly"
+grounding_caption = "rat"
 box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
 frame_idx = 0
 segtracker = SegTracker(segtracker_args, sam_args, aot_args)
@@ -59,26 +59,25 @@ segtracker.restart_tracker()
 ## Load a model
 # create model
 output_shape = (int(image_size/4), int(image_size/4))
-model = Model(nKps, output_shape=output_shape, num_agents=num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
+#model = Model(nKps, output_shape=output_shape, num_agents=num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
+bkind_model = BKinD_multi(nKps, output_shape=output_shape, num_agents=num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
 
 #model = Model(nKps)
 if os.path.isfile(resume):
   if gpu is not None:
-    model = model.cuda(gpu)
+    bkind_model = bkind_model.cuda(gpu)
     loc = 'cuda:{}'.format(gpu)
     checkpoint = torch.load(resume, map_location=loc)
   else:
     checkpoint = torch.load(resume)
 
-  bkind_model = BKinD_multi(nKps)
-
   bkind_model.load_state_dict(checkpoint['state_dict'])
   bkind_model_dict = bkind_model.state_dict()
 
-  model_dict = model.state_dict()
-  pretrained_dict = {k: v for k, v in bkind_model_dict.items() if k in model_dict}
-  model_dict.update(pretrained_dict)
-  model.load_state_dict(model_dict)                                                                                                 
+  # model_dict = model.state_dict()
+  # pretrained_dict = {k: v for k, v in bkind_model_dict.items() if k in model_dict}
+  # model_dict.update(pretrained_dict)
+  # model.load_state_dict(model_dict)
 
   print("=> loaded checkpoint '{}' (epoch {})"
         .format(resume, checkpoint['epoch']))
@@ -97,18 +96,18 @@ for i in range(len(sample_files)):
     im = transform(im)
     im = im.unsqueeze(0).cuda(gpu, non_blocking=True)
 
-    output = model(im)
+    output = bkind_model(im)
 
     pred_kps = torch.stack((output[0][0], output[0][1]), dim=2)
     pred_kps = pred_kps.data.cpu().numpy()
 
     im_with_kps = visualize_with_circles(im[0].data.cpu().numpy(), pred_kps[0]+1,
-                                        output[5][0], mean=mean, std=std)
+                                        output[2][0], mean=mean, std=std)
     im_with_kps = im_with_kps.astype('uint8')
     im_with_kps = cv2.cvtColor(im_with_kps, cv2.COLOR_RGB2BGR)
     cv2.imwrite(os.path.join(sample_path, 'output_'+str(i+1)+'.png'), im_with_kps)
 
-    cv2.namedWindow('image', cv2.WINDOW_NORMAL)
-    cv2.imshow('image', im_with_kps)
+    #cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+    #cv2.imshow('image', im_with_kps)
 
 print("==> Output images saved in \'sample_images\' directory")
