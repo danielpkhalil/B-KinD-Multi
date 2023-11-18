@@ -24,8 +24,8 @@ nkpts: 10
 num_agents: 4
 
 # Hyperparameters
-image_size: 256
-frame_gap: 20
+image_size: 512 #256
+frame_gap: 1 #adjust gap for tracking from 20
 bounding_box: False  # Only False allowed for the custom dataset
 
 perc_weight: [100.0, 1.6, 2.3, 1.8, 2.8, 100.0] 

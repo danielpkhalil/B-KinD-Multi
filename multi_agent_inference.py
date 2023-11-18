@@ -23,7 +23,7 @@ num_agents = 4
 gpu = 0  # None if gpu is not available
 resume = 'checkpoint/custom_dataset/checkpoint.pth.tar'
 sample_path = 'sample_images'
-image_size = 256
+image_size = 512
 #####################################################
 
 mean = [0.485, 0.456, 0.406]
@@ -97,6 +97,15 @@ for i in range(len(sample_files)):
     im = im.unsqueeze(0).cuda(gpu, non_blocking=True)
 
     output = bkind_model(im)
+
+    combined_mask = output[3][0][0][0].detach().cpu().numpy()
+    for m in range(1, output[3].shape[0]):
+        mask = output[3][m][0][0].detach().cpu().numpy()
+        combined_mask += mask
+    combined_mask = combined_mask*255
+    combined_mask = combined_mask.astype('uint8')
+    cv2.imwrite(os.path.join(sample_path, 'outputMASK_' + str(i + 1) + '.png'), combined_mask)
+
 
     pred_kps = torch.stack((output[0][0], output[0][1]), dim=2)
     pred_kps = pred_kps.data.cpu().numpy()

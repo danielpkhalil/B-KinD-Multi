@@ -231,21 +231,26 @@ class SegTracker():
 
         # get annotated_frame and boxes
         annotated_frame, boxes = self.detector.run_grounding(origin_frame, grounding_caption, box_threshold, text_threshold)
+
+        # import matplotlib.pyplot as plt
+        # plt.imshow(annotated_frame)
+        # plt.show()
+
         for i in range(len(boxes)):
             bbox = boxes[i]
             if (bbox[1][0] - bbox[0][0]) * (bbox[1][1] - bbox[0][1]) > annotated_frame.shape[0] * annotated_frame.shape[1] * box_size_threshold:
                 continue
             interactive_mask = self.sam.segment_with_box(origin_frame, bbox, reset_image)[0]
-            #refined_merged_mask = self.add_mask(interactive_mask)
+            refined_merged_mask = self.add_mask(interactive_mask)
             interactive_mask = interactive_mask.astype(int)
             masks.append(interactive_mask)
-            #self.update_origin_merged_mask(refined_merged_mask)
+            self.update_origin_merged_mask(refined_merged_mask)
             self.curr_idx += 1
 
         # reset origin_mask
         self.reset_origin_merged_mask(bc_mask, bc_id)
 
-        return masks, annotated_frame
+        return masks, refined_merged_mask, annotated_frame
 
 if __name__ == '__main__':
     from model_args import segtracker_args,sam_args,aot_args

@@ -167,6 +167,7 @@ class Model(nn.Module):
         # SAM_ViT.load_state_dict(encoder_weights, strict=False)
         # for param in SAM_ViT.parameters():
         #     param.requires_grad = False
+        # SAM_ViT.to("cuda")
         # self.encoder = SAM_ViT
         #check input and output (embedd) dimmensions, also freeze for not backprop
 
@@ -198,11 +199,13 @@ class Model(nn.Module):
         return (u_x_list, u_y_list)
 
     def forward(self, x, tr_x=None, gmtr_x1 = None, gmtr_x2 = None, gmtr_x3 = None,
-                find_peaks=False, use_bbox=True):
+                find_peaks=False, use_bbox=True, frame_idx=0):
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
+        # use SAM normalization
 
-        x_masks = self.getMask(x)
+
+        x_masks = self.getMask(x, frame_idx)
         x_norm = normalize(x)
 
         # h, w = x_norm.shape[-2:]
@@ -213,8 +216,14 @@ class Model(nn.Module):
         x_res = self.encoder(x_norm)
         
         if tr_x is not None:
-            tr_x_masks = self.getMask(tr_x)
+            tr_x_masks = self.getMask(tr_x, frame_idx)
             tr_x_norm = normalize(tr_x)
+
+            # h, w = tr_x_norm.shape[-2:]
+            # padh = self.encoder.img_size - h
+            # padw = self.encoder.img_size - w
+            # tr_x_norm = nnf.pad(tr_x_norm, (0, padw, 0, padh))
+
             tr_x_res = self.encoder(tr_x_norm)
             tr_kpt_feat, tr_kpt_out = self.kptNet(tr_x_res)  # keypoint for reconstruction
 
@@ -239,7 +248,7 @@ class Model(nn.Module):
         u_x, u_y, covs, _, confidence = self._mapTokpt(heatmap, x_masks, find_peaks=find_peaks, use_bbox=use_bbox)
         
         if tr_x is None:
-            return (u_x, u_y), kpt_out[-1], confidence
+            return (u_x, u_y), kpt_out[-1], confidence, x_masks
 
         tr_kpt_conds = []
         
@@ -263,8 +272,14 @@ class Model(nn.Module):
         if gmtr_x1 is not None:  # Rotation loss
             out_h, out_w = int(self.output_shape[0]*2), int(self.output_shape[1]*2)
 
-            gmtr_x1_masks = self.getMask(gmtr_x1)
+            gmtr_x1_masks = self.getMask(gmtr_x1, frame_idx)
             gmtr_x1_norm = normalize(gmtr_x1)
+
+            # h, w = gmtr_x1_norm.shape[-2:]
+            # padh = self.encoder.img_size - h
+            # padw = self.encoder.img_size - w
+            # gmtr_x1_norm = nnf.pad(gmtr_x1_norm, (0, padw, 0, padh))
+
             gmtr_x_res = self.encoder(gmtr_x1_norm)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
@@ -277,8 +292,14 @@ class Model(nn.Module):
             gmtr_kpt_conds_1 = self._kptTomap(gmtr_u_x, gmtr_u_y, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             #################################################
-            gmtr_x2_masks = self.getMask(gmtr_x2)
+            gmtr_x2_masks = self.getMask(gmtr_x2, frame_idx)
             gmtr_x2_norm = normalize(gmtr_x2)
+
+            # h, w = gmtr_x2_norm.shape[-2:]
+            # padh = self.encoder.img_size - h
+            # padw = self.encoder.img_size - w
+            # gmtr_x2_norm = nnf.pad(gmtr_x2_norm, (0, padw, 0, padh))
+
             gmtr_x_res = self.encoder(gmtr_x2_norm)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
@@ -291,8 +312,14 @@ class Model(nn.Module):
             gmtr_kpt_conds_2 = self._kptTomap(gmtr_u_x_2, gmtr_u_y_2, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             ###########################################
-            gmtr_x3_masks = self.getMask(gmtr_x3)
+            gmtr_x3_masks = self.getMask(gmtr_x3, frame_idx)
             gmtr_x3_norm = normalize(gmtr_x3)
+
+            # h, w = gmtr_x3_norm.shape[-2:]
+            # padh = self.encoder.img_size - h
+            # padw = self.encoder.img_size - w
+            # gmtr_x3_norm = nnf.pad(gmtr_x3_norm, (0, padw, 0, padh))
+
             gmtr_x_res = self.encoder(gmtr_x3_norm)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
@@ -729,7 +756,7 @@ class Model(nn.Module):
         
         return g_yx
 
-    def getMask(self, frame):
+    def getMask(self, frame, frame_idx):
         #segment frame
         # sam_args['generator_args'] = {
         #     'points_per_side': 30,
@@ -760,8 +787,21 @@ class Model(nn.Module):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = (frame*255).astype(np.uint8)
 
-            pred_masks, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
-                                                                       self.text_threshold, self.box_size_threshold)
+            #if (frame_idx == 0):
+            pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
+                                                                   self.text_threshold, self.box_size_threshold, True)
+            #self.segtracker.add_reference(frame, rmm)
+            # else:
+            #     pred_masks, annotated_frame = self.segtracker.track(frame, update_memory=True)
+            #     self.segtracker.add_reference(frame, rmm)
+
+            # for l in range(len(pred_masks)):
+            #     plt.imshow(pred_masks[l])
+            #     plt.show()
+            # plt.imshow(frame)
+            # plt.show()
+
+            #self.segtracker.restart_tracker()
             torch.cuda.empty_cache()
             #obj_ids = np.unique(pred_mask)
             #obj_ids = obj_ids[obj_ids != 0]
@@ -776,21 +816,17 @@ class Model(nn.Module):
         if len(pred_masks) > 0:
             while len(pred_masks) < self.num_agents:
                 pred_masks.append(pred_masks[-1])
-            del pred_masks[self.num_agents+1:]
+            del pred_masks[self.num_agents:]
 
             # Stack the arrays along a new axis
             masks = np.stack(pred_masks, axis=0)
 
             # Add an extra dimension to get the desired shape
             masks = np.expand_dims(masks, axis=1)
-
             tensor_masks = torch.from_numpy(masks)
-
             tensor_masks = tensor_masks.to(torch.float32)
-
             tensor_masks = tensor_masks.to('cuda')
-
-            resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.K, 64, 64), mode='trilinear', align_corners=False)
+            resized_tensor_masks = nnf.interpolate(tensor_masks, size=(self.K, self.output_shape[0], self.output_shape[0]), mode='trilinear', align_corners=False)
         else:
             resized_tensor_masks = []
 

@@ -246,9 +246,9 @@ def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss
                             images[6].cuda(args.gpu, non_blocking=True)
 
         if epoch < args.curriculum:
-            output = model(inputs, tr_inputs)
+            output = model(inputs, tr_inputs, frame_idx=i)
         else:
-            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3)
+            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=i)
 
         loss = loss_module.update_loss(inputs, tr_inputs, loss_mask, output, epoch)
 
@@ -306,7 +306,7 @@ def validate(val_loader, model, loss_module, epoch, args):
                             images[6].cuda(args.gpu, non_blocking=True)
 
             # compute output
-            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3)
+            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=i)
             # Note that validate function only computes MSE loss
             loss = loss_module.criterion[1](output[0] * loss_mask, tr_inputs * loss_mask)
 
