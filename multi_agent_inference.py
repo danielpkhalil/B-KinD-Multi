@@ -96,7 +96,7 @@ for i in range(len(sample_files)):
     im = transform(im)
     im = im.unsqueeze(0).cuda(gpu, non_blocking=True)
 
-    output = bkind_model(im)
+    output = bkind_model(im, frame_idx=frame_idx)
 
     combined_mask = output[3][0][0][0].detach().cpu().numpy()
     for m in range(1, output[3].shape[0]):
@@ -118,5 +118,7 @@ for i in range(len(sample_files)):
 
     #cv2.namedWindow('image', cv2.WINDOW_NORMAL)
     #cv2.imshow('image', im_with_kps)
+
+    frame_idx += 1
 
 print("==> Output images saved in \'sample_images\' directory")

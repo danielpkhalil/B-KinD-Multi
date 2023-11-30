@@ -127,7 +127,7 @@ class Decoder(nn.Module):
 class Model(nn.Module):
     def __init__(self, n_kps=10, output_dim=200, pretrained=True, 
                  output_shape=(64, 64), num_agents=2, segtracker=None, grounding_caption='', box_threshold=0.35, text_threshold=0.5, box_size_threshold=0.5, reset_image=True):
-        
+
         super(Model, self).__init__()
         self.K = n_kps
         self.num_agents = num_agents
@@ -787,22 +787,35 @@ class Model(nn.Module):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = (frame*255).astype(np.uint8)
 
-            #if (frame_idx == 0):
-            pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
-                                                                   self.text_threshold, self.box_size_threshold, True)
-            #self.segtracker.add_reference(frame, rmm)
-            # else:
-            #     pred_masks, annotated_frame = self.segtracker.track(frame, update_memory=True)
-            #     self.segtracker.add_reference(frame, rmm)
+            if (frame_idx == 0):
+                pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
+                                                                       self.text_threshold, self.box_size_threshold, True)
+                torch.cuda.empty_cache()
+                gc.collect()
+                self.segtracker.add_reference(frame, rmm)
+            elif (frame_idx % 2 == 0):
+                pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
+                                                                       self.text_threshold, self.box_size_threshold, True)
+                torch.cuda.empty_cache()
+                gc.collect()
+                track_mask, _ = self.segtracker.track(frame)
+                new_obj_mask = self.segtracker.find_new_objs(track_mask, rmm)
+                if np.sum(new_obj_mask > 0) > frame.shape[0] * frame.shape[1] * 0.4:
+                    new_obj_mask = np.zeros_like(new_obj_mask)
+                pred_mask = track_mask + new_obj_mask
+                self.segtracker.add_reference(frame, pred_mask)
+            else:
+                _, pred_masks = self.segtracker.track(frame, update_memory=True)
+                #self.segtracker.add_reference(frame, rmm)
 
-            # for l in range(len(pred_masks)):
-            #     plt.imshow(pred_masks[l])
-            #     plt.show()
-            # plt.imshow(frame)
-            # plt.show()
+            if frame_idx == 10:
+                for l in range(len(pred_masks)):
+                    plt.imshow(pred_masks[l])
+                    plt.show()
+                plt.imshow(frame)
+                plt.show()
 
             #self.segtracker.restart_tracker()
-            torch.cuda.empty_cache()
             #obj_ids = np.unique(pred_mask)
             #obj_ids = obj_ids[obj_ids != 0]
             #print("processed frame {}, obj_num {}".format(frame_idx, len(obj_ids)), end='\n')

@@ -102,10 +102,10 @@ class SegTracker():
         Return:
             origin_merged_mask: numpy array (h,w)
         '''
-        pred_mask = self.tracker.track(frame)
+        pred_mask, masks = self.tracker.track(frame)
         if update_memory:
             self.tracker.update_memory(pred_mask)
-        return pred_mask.squeeze(0).squeeze(0).detach().cpu().numpy().astype(np.uint8)
+        return pred_mask.squeeze(0).squeeze(0).detach().cpu().numpy().astype(np.uint8), masks
     
     def get_tracking_objs(self):
         objs = set()
@@ -200,6 +200,36 @@ class SegTracker():
 
         return refined_merged_mask, masked_frame
 
+    def keypoint_seg(self, origin_frame: np.ndarray, coords: np.ndarray, modes: np.ndarray, multimask=True):
+        '''
+        Use point-prompt to get mask
+        Parameters:
+            origin_frame: H, W, C
+            coords: nd.array [[x, y]]
+            modes: nd.array [[1]]
+        Return:
+            refined_merged_mask: numpy array (h, w)
+            masked_frame: numpy array (h, w, c)
+        '''
+        # get interactive_mask
+        interactive_mask = self.sam.segment_with_click(origin_frame, coords, modes, multimask)
+
+        refined_merged_mask = self.add_mask(interactive_mask)
+
+        # draw mask
+        masked_frame = draw_mask(origin_frame.copy(), refined_merged_mask)
+
+        # draw points
+        # self.everything_labels = np.array(self.everything_labels).astype(np.int64)
+        # self.everything_points = np.array(self.everything_points).astype(np.int64)
+
+        masked_frame = draw_points(coords, modes, masked_frame)
+
+        # draw outline
+        masked_frame = draw_outline(interactive_mask, masked_frame)
+
+        return refined_merged_mask, masked_frame
+
     def add_mask(self, interactive_mask: np.ndarray):
         '''
         Merge interactive mask with self.origin_merged_mask
@@ -246,6 +276,12 @@ class SegTracker():
             masks.append(interactive_mask)
             self.update_origin_merged_mask(refined_merged_mask)
             self.curr_idx += 1
+
+            # interactive_mask = self.sam.segment_with_box(origin_frame, bbox, reset_image)[0]
+            # refined_merged_mask = self.add_mask(interactive_mask)
+            # refined_merged_mask = refined_merged_mask.astype(int)
+            # masks.append(refined_merged_mask)
+            # self.curr_idx += 1
 
         # reset origin_mask
         self.reset_origin_merged_mask(bc_mask, bc_id)

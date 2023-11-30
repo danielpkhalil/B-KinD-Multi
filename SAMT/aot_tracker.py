@@ -83,7 +83,15 @@ class AOTTracker(object):
         pred_label = torch.argmax(pred_logit, dim=1,
                                     keepdim=True).float()
 
-        return  pred_label
+        masks = []
+
+        for i in range(1, pred_logit.shape[1]):
+            mask = pred_label[0][0]
+            mask = torch.where(mask == i, mask, torch.zeros_like(mask))
+            mask = mask.cpu().numpy()
+            masks.append(mask)
+
+        return pred_label, masks
     
     @torch.no_grad()
     def update_memory(self, pred_label):
