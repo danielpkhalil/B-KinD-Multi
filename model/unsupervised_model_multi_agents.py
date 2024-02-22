@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 
 from torchvision import transforms
+import torchvision.transforms.functional as TF
 import torch.nn.functional as nnf
 
 from .resnet_updated import conv3x3
 from .resnet_updated import resnetbank50all as resnetbank50
 from .globalNet import globalNet
-from SAMT.sam.segment_anything.modeling import image_encoder
 
 import math
 # from .tusk import tusk
@@ -20,10 +20,7 @@ import numpy as np
 
 import os
 import cv2
-from SAMT.SegTracker import SegTracker
-from SAMT.model_args import aot_args, sam_args, segtracker_args
 from PIL import Image
-from SAMT.aot_tracker import _palette
 import numpy as np
 import torch
 import imageio
@@ -126,17 +123,13 @@ class Decoder(nn.Module):
     
 class Model(nn.Module):
     def __init__(self, n_kps=10, output_dim=200, pretrained=True, 
-                 output_shape=(64, 64), num_agents=2, segtracker=None, grounding_caption='', box_threshold=0.35, text_threshold=0.5, box_size_threshold=0.5, reset_image=True):
+                 output_shape=(64, 64), num_agents=2, frame_gap=20, masks=[]):
 
         super(Model, self).__init__()
         self.K = n_kps
         self.num_agents = num_agents
-        self.segtracker = segtracker
-        self.grounding_caption = grounding_caption
-        self.box_threshold = box_threshold
-        self.text_threshold = text_threshold
-        self.box_size_threshold = box_size_threshold
-        self.reset_image = reset_image
+        self.frame_gap = frame_gap
+        self.masks = masks
         
         channel_settings = [2048, 1024, 512, 256]
         self.output_shape = output_shape
@@ -200,31 +193,29 @@ class Model(nn.Module):
 
     def forward(self, x, tr_x=None, gmtr_x1 = None, gmtr_x2 = None, gmtr_x3 = None,
                 find_peaks=False, use_bbox=True, frame_idx=0):
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
+        #normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                                std=[0.229, 0.224, 0.225])
         # use SAM normalization
 
 
-        x_masks = self.getMask(x, frame_idx)
-        x_norm = normalize(x)
+        x_masks = self.getMask(self.masks[frame_idx])
 
         # h, w = x_norm.shape[-2:]
         # padh = self.encoder.img_size - h
         # padw = self.encoder.img_size - w
         # x_norm = nnf.pad(x_norm, (0, padw, 0, padh))
 
-        x_res = self.encoder(x_norm)
+        x_res = self.encoder(x)
         
         if tr_x is not None:
-            tr_x_masks = self.getMask(tr_x, frame_idx)
-            tr_x_norm = normalize(tr_x)
+            tr_x_masks = self.getMask(self.masks[frame_idx + self.frame_gap])
 
             # h, w = tr_x_norm.shape[-2:]
             # padh = self.encoder.img_size - h
             # padw = self.encoder.img_size - w
             # tr_x_norm = nnf.pad(tr_x_norm, (0, padw, 0, padh))
 
-            tr_x_res = self.encoder(tr_x_norm)
+            tr_x_res = self.encoder(tr_x)
             tr_kpt_feat, tr_kpt_out = self.kptNet(tr_x_res)  # keypoint for reconstruction
 
             # Reconstruction module
@@ -272,15 +263,14 @@ class Model(nn.Module):
         if gmtr_x1 is not None:  # Rotation loss
             out_h, out_w = int(self.output_shape[0]*2), int(self.output_shape[1]*2)
 
-            gmtr_x1_masks = self.getMask(gmtr_x1, frame_idx)
-            gmtr_x1_norm = normalize(gmtr_x1)
+            gmtr_x1_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], 90))
 
             # h, w = gmtr_x1_norm.shape[-2:]
             # padh = self.encoder.img_size - h
             # padw = self.encoder.img_size - w
             # gmtr_x1_norm = nnf.pad(gmtr_x1_norm, (0, padw, 0, padh))
 
-            gmtr_x_res = self.encoder(gmtr_x1_norm)
+            gmtr_x_res = self.encoder(gmtr_x1)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
             gmtr_heatmap = gmtr_kpt_out[-1].view(-1, self.K, gmtr_kpt_out[-1].size(2) * gmtr_kpt_out[-1].size(3))
@@ -292,15 +282,14 @@ class Model(nn.Module):
             gmtr_kpt_conds_1 = self._kptTomap(gmtr_u_x, gmtr_u_y, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             #################################################
-            gmtr_x2_masks = self.getMask(gmtr_x2, frame_idx)
-            gmtr_x2_norm = normalize(gmtr_x2)
+            gmtr_x2_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], 180))
 
             # h, w = gmtr_x2_norm.shape[-2:]
             # padh = self.encoder.img_size - h
             # padw = self.encoder.img_size - w
             # gmtr_x2_norm = nnf.pad(gmtr_x2_norm, (0, padw, 0, padh))
 
-            gmtr_x_res = self.encoder(gmtr_x2_norm)
+            gmtr_x_res = self.encoder(gmtr_x2)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
             gmtr_heatmap = gmtr_kpt_out[-1].view(-1, self.K, gmtr_kpt_out[-1].size(2) * gmtr_kpt_out[-1].size(3))
@@ -312,15 +301,14 @@ class Model(nn.Module):
             gmtr_kpt_conds_2 = self._kptTomap(gmtr_u_x_2, gmtr_u_y_2, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             ###########################################
-            gmtr_x3_masks = self.getMask(gmtr_x3, frame_idx)
-            gmtr_x3_norm = normalize(gmtr_x3)
+            gmtr_x3_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], -90))
 
             # h, w = gmtr_x3_norm.shape[-2:]
             # padh = self.encoder.img_size - h
             # padw = self.encoder.img_size - w
             # gmtr_x3_norm = nnf.pad(gmtr_x3_norm, (0, padw, 0, padh))
 
-            gmtr_x_res = self.encoder(gmtr_x3_norm)
+            gmtr_x_res = self.encoder(gmtr_x3)
             gmtr_kpt_feat, gmtr_kpt_out = self.kptNet(gmtr_x_res)
             
             gmtr_heatmap = gmtr_kpt_out[-1].view(-1, self.K, gmtr_kpt_out[-1].size(2) * gmtr_kpt_out[-1].size(3))
@@ -756,73 +744,13 @@ class Model(nn.Module):
         
         return g_yx
 
-    def getMask(self, frame, frame_idx):
-        #segment frame
-        # sam_args['generator_args'] = {
-        #     'points_per_side': 30,
-        #     'pred_iou_thresh': 0.8,
-        #     'stability_score_thresh': 0.9,
-        #     'crop_n_layers': 1,
-        #     'crop_n_points_downscale_factor': 2,
-        #     'min_mask_region_area': 200,
-        # }
-        # # Set Text args
-        # '''
-        # parameter:
-        #     grounding_caption: Text prompt to detect objects in key-frames
-        #     box_threshold: threshold for box
-        #     text_threshold: threshold for label(text)
-        #     box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-        #     reset_image: reset the image embeddings for SAM
-        # '''
-        # grounding_caption = "rat"
-        # box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-        # frame_idx = 0
-        # segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-        # segtracker.restart_tracker()
-        with torch.cuda.amp.autocast():
-            frame = frame.cpu().numpy()
-            frame = np.squeeze(frame, axis=0)
-            frame = frame.transpose((1, 2, 0))
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = (frame*255).astype(np.uint8)
-
-            if (frame_idx == 0):
-                pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
-                                                                       self.text_threshold, self.box_size_threshold, True)
-                torch.cuda.empty_cache()
-                gc.collect()
-                self.segtracker.add_reference(frame, rmm)
-            elif (frame_idx % 2 == 0):
-                pred_masks, rmm, annotated_frame = self.segtracker.detect_and_seg(frame, self.grounding_caption, self.box_threshold,
-                                                                       self.text_threshold, self.box_size_threshold, True)
-                torch.cuda.empty_cache()
-                gc.collect()
-                track_mask, _ = self.segtracker.track(frame)
-                new_obj_mask = self.segtracker.find_new_objs(track_mask, rmm)
-                if np.sum(new_obj_mask > 0) > frame.shape[0] * frame.shape[1] * 0.4:
-                    new_obj_mask = np.zeros_like(new_obj_mask)
-                pred_mask = track_mask + new_obj_mask
-                self.segtracker.add_reference(frame, pred_mask)
-            else:
-                _, pred_masks = self.segtracker.track(frame, update_memory=True)
-                #self.segtracker.add_reference(frame, rmm)
-
-            if frame_idx == 10:
-                for l in range(len(pred_masks)):
-                    plt.imshow(pred_masks[l])
-                    plt.show()
-                plt.imshow(frame)
-                plt.show()
-
-            #self.segtracker.restart_tracker()
-            #obj_ids = np.unique(pred_mask)
-            #obj_ids = obj_ids[obj_ids != 0]
-            #print("processed frame {}, obj_num {}".format(frame_idx, len(obj_ids)), end='\n')
-
-            #del segtracker
-            torch.cuda.empty_cache()
-            gc.collect()
+    def getMask(self, merged_mask):
+        pred_masks = []
+        unique_labels = np.unique(merged_mask)
+        unique_labels = unique_labels[unique_labels != 0]
+        for label in unique_labels:
+            single_mask = np.where(merged_mask == label, label, 0)
+            pred_masks.append(single_mask)
 
         for iii in range(len(pred_masks)):
             pred_masks[iii] = np.repeat(pred_masks[iii][np.newaxis, :, :], self.K, axis=0)

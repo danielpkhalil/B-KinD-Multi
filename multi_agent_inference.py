@@ -7,9 +7,6 @@ import torchvision.transforms as transforms
 from model.unsupervised_model_multi_agents import Model as BKinD_multi
 #from model.kpt_detector import Model
 
-from SAMT.SegTracker import SegTracker
-from SAMT.model_args import aot_args, sam_args, segtracker_args
-
 import cv2
 from PIL import Image
 from utils import visualize_with_circles

@@ -7,7 +7,6 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 
-from SAMT.SegTracker import SegTracker
 from config.config_reader import parse_args, create_parser
 
 from dataloader.load_dataloader import load_dataloader
@@ -25,10 +24,9 @@ plt.ioff()
 
 import os
 import cv2
-from SAMT.SegTracker import SegTracker
-from SAMT.model_args import aot_args, sam_args, segtracker_args
+
 from PIL import Image
-from SAMT.aot_tracker import _palette
+
 import numpy as np
 import torch
 import imageio
@@ -36,7 +34,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import binary_dilation
 import gc
 
-
+from Tracking_Anything_with_DEVA.demo.run_with_text import run_demo
 
 best_loss = 10000
 
@@ -58,36 +56,14 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
-    # init segtracker
+    #SEGMENTATION HERE
     #################################################################################
-    # segment frame
-    sam_args['generator_args'] = {
-        'points_per_side': 30,
-        'pred_iou_thresh': 0.8,
-        'stability_score_thresh': 0.9,
-        'crop_n_layers': 1,
-        'crop_n_points_downscale_factor': 2,
-        'min_mask_region_area': 200,
-    }
-    # Set Text args
-    '''
-    parameter:
-        grounding_caption: Text prompt to detect objects in key-frames
-        box_threshold: threshold for box 
-        text_threshold: threshold for label(text)
-        box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-        reset_image: reset the image embeddings for SAM
-    '''
-    grounding_caption = "rat"
-    box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-    frame_idx = 0
-    segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-    segtracker.restart_tracker()
+    masks = run_demo(4, './example/vipseg/images/12_1mWNahzcsAc', True, 'semionline', 480, './example/output', 'person.hat.horse', 0.5)
     #################################################################################
 
     # create model
     output_shape = (int(args.image_size/4), int(args.image_size/4))
-    model = Model(args.nkpts, output_shape=output_shape, num_agents=args.num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
+    model = Model(args.nkpts, output_shape=output_shape, num_agents=args.num_agents, frame_gap=args.frame_gap, masks=masks)
 
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
@@ -152,33 +128,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     is_best = True
 
-    # #init segtracker
-    # #################################################################################
-    # # segment frame
-    # sam_args['generator_args'] = {
-    #     'points_per_side': 30,
-    #     'pred_iou_thresh': 0.8,
-    #     'stability_score_thresh': 0.9,
-    #     'crop_n_layers': 1,
-    #     'crop_n_points_downscale_factor': 2,
-    #     'min_mask_region_area': 200,
-    # }
-    # # Set Text args
-    # '''
-    # parameter:
-    #     grounding_caption: Text prompt to detect objects in key-frames
-    #     box_threshold: threshold for box
-    #     text_threshold: threshold for label(text)
-    #     box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-    #     reset_image: reset the image embeddings for SAM
-    # '''
-    # grounding_caption = "rat"
-    # box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-    # frame_idx = 0
-    # segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-    # segtracker.restart_tracker()
-    # #################################################################################
-    
     rloss = []
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -235,6 +184,8 @@ def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss
         # measure data loading time
         data_time.update(time.time() - end)
 
+        frame_idx = i*args.frame_gap
+
         if args.gpu is not None:
             inputs, tr_inputs, loss_mask, in_mask = images[0].cuda(args.gpu, non_blocking=True), \
                                                     images[1].cuda(args.gpu, non_blocking=True), \
@@ -246,9 +197,9 @@ def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss
                             images[6].cuda(args.gpu, non_blocking=True)
 
         if epoch < args.curriculum:
-            output = model(inputs, tr_inputs, frame_idx=i)
+            output = model(inputs, tr_inputs, frame_idx=frame_idx)
         else:
-            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=i)
+            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=frame_idx)
 
         loss = loss_module.update_loss(inputs, tr_inputs, loss_mask, output, epoch)
 
