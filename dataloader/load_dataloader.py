@@ -83,22 +83,26 @@ def load_dataloader(args):
         train_dataset = custom_dataset.CustomDataset(traindir, transforms.Compose([
                               transforms.Resize(args.image_size),
                               transforms.CenterCrop(args.image_size),
-                              transforms.ToTensor(),]), #removed normalize
+                              transforms.ToTensor(),
+                              normalize,]),
                               target_transform=transforms.Compose([
                               transforms.Resize(args.image_size),
                               transforms.CenterCrop(args.image_size),
-                              transforms.ToTensor(),]), #removed normalize
+                              transforms.ToTensor(),
+                              normalize,]),
                               image_size=[args.image_size, args.image_size],
                               loader=loader, frame_gap=args.frame_gap)
 
         val_dataset = custom_dataset.CustomDataset(valdir, transforms.Compose([
                               transforms.Resize(args.image_size),
                               transforms.CenterCrop(args.image_size),
-                              transforms.ToTensor(),]), #removed normalize
+                              transforms.ToTensor(),
+                              normalize,]),
                               target_transform=transforms.Compose([
                               transforms.Resize(args.image_size),
                               transforms.CenterCrop(args.image_size),
-                              transforms.ToTensor(),]), #removed normalize
+                              transforms.ToTensor(),
+                              normalize,]),
                               image_size=[args.image_size, args.image_size],
                               loader=loader, frame_gap=args.frame_gap)
 
