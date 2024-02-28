@@ -32,5 +32,5 @@ perc_weight: [100.0, 1.6, 2.3, 1.8, 2.8, 100.0]
 
 
 # Specify model path
-# resume: checkpoint/custom_dataset/saved/scheckpoint.pth.tar
+# resume: checkpoint/custom_dataset/saved/checkpoint.pth.tar
 evaluate: False
