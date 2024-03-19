@@ -123,13 +123,12 @@ class Decoder(nn.Module):
     
 class Model(nn.Module):
     def __init__(self, n_kps=10, output_dim=200, pretrained=True, 
-                 output_shape=(64, 64), num_agents=2, frame_gap=20, masks=[]):
+                 output_shape=(64, 64), num_agents=2, frame_gap=20):
 
         super(Model, self).__init__()
         self.K = n_kps
         self.num_agents = num_agents
         self.frame_gap = frame_gap
-        self.masks = masks
         
         channel_settings = [2048, 1024, 512, 256]
         self.output_shape = output_shape
@@ -192,13 +191,13 @@ class Model(nn.Module):
         return (u_x_list, u_y_list)
 
     def forward(self, x, tr_x=None, gmtr_x1 = None, gmtr_x2 = None, gmtr_x3 = None,
-                find_peaks=False, use_bbox=True, frame_idx=0):
+                find_peaks=False, use_bbox=True, frame_idx=0, masks=[]):
         #normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
         #                                std=[0.229, 0.224, 0.225])
         # use SAM normalization
 
 
-        x_masks = self.getMask(self.masks[frame_idx])
+        x_masks = self.getMask(masks[frame_idx])
 
         # h, w = x_norm.shape[-2:]
         # padh = self.encoder.img_size - h
@@ -208,7 +207,7 @@ class Model(nn.Module):
         x_res = self.encoder(x)
         
         if tr_x is not None:
-            tr_x_masks = self.getMask(self.masks[frame_idx + self.frame_gap])
+            tr_x_masks = self.getMask(masks[frame_idx + self.frame_gap])
 
             # h, w = tr_x_norm.shape[-2:]
             # padh = self.encoder.img_size - h
@@ -263,7 +262,7 @@ class Model(nn.Module):
         if gmtr_x1 is not None:  # Rotation loss
             out_h, out_w = int(self.output_shape[0]*2), int(self.output_shape[1]*2)
 
-            gmtr_x1_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], 90))
+            gmtr_x1_masks = self.getMask(np.rot90(masks[frame_idx + self.frame_gap]))
 
             # h, w = gmtr_x1_norm.shape[-2:]
             # padh = self.encoder.img_size - h
@@ -282,7 +281,7 @@ class Model(nn.Module):
             gmtr_kpt_conds_1 = self._kptTomap(gmtr_u_x, gmtr_u_y, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             #################################################
-            gmtr_x2_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], 180))
+            gmtr_x2_masks = self.getMask(np.rot90(masks[frame_idx + self.frame_gap], 2))
 
             # h, w = gmtr_x2_norm.shape[-2:]
             # padh = self.encoder.img_size - h
@@ -301,7 +300,7 @@ class Model(nn.Module):
             gmtr_kpt_conds_2 = self._kptTomap(gmtr_u_x_2, gmtr_u_y_2, H=out_h, W=out_w, inv_std=0.001, normalize=False)
 
             ###########################################
-            gmtr_x3_masks = self.getMask(TF.rotate(self.masks[frame_idx + self.frame_gap], -90))
+            gmtr_x3_masks = self.getMask(np.rot90(masks[frame_idx + self.frame_gap], -1))
 
             # h, w = gmtr_x3_norm.shape[-2:]
             # padh = self.encoder.img_size - h
