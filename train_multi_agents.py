@@ -58,12 +58,16 @@ def main_worker(gpu, ngpus_per_node, args):
 
     #SEGMENTATION HERE
     #################################################################################
-    masks = run_demo(4, './example/vipseg/images/12_1mWNahzcsAc', True, 'semionline', 480, './example/output', 'person.hat.horse', 0.5)
+    #might have to do for each video in dir in the future
+    traindir = os.path.join(args.data, 'train/video1')
+    valdir = os.path.join(args.data, 'val/video2')
+    train_masks = run_demo(4, traindir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
+    val_masks = run_demo(4, valdir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
     #################################################################################
 
     # create model
     output_shape = (int(args.image_size/4), int(args.image_size/4))
-    model = Model(args.nkpts, output_shape=output_shape, num_agents=args.num_agents, frame_gap=args.frame_gap, masks=masks)
+    model = Model(args.nkpts, output_shape=output_shape, num_agents=args.num_agents, frame_gap=args.frame_gap)
 
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
@@ -123,7 +127,7 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
-        validate(val_loader, model, loss_module, 0, args)
+        validate(val_loader, model, loss_module, 0, args, val_masks)
         return
 
     is_best = True
@@ -137,11 +141,11 @@ def main_worker(gpu, ngpus_per_node, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train_loss, running_loss, rloss = train(train_loader, model, loss_module, optimizer, epoch, args, running_loss, rloss)
+        train_loss, running_loss, rloss = train(train_loader, model, loss_module, optimizer, epoch, args, running_loss, rloss, train_masks)
 
         # evaluate on validation set every val_schedule epochs
         if epoch > 0 and epoch%args.val_schedule == 0:
-            test_loss = validate(val_loader, model, loss_module, epoch, args)
+            test_loss = validate(val_loader, model, loss_module, epoch, args, val_masks)
         else:
             test_loss = 10000  # set test_loss = 100000 when not using validate
 
@@ -161,7 +165,7 @@ def main_worker(gpu, ngpus_per_node, args):
         saveLoss(args, rloss, epoch)
 
         
-def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss, rloss):
+def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss, rloss, train_masks):
 
     epoch=epoch+1
 
@@ -197,9 +201,9 @@ def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss
                             images[6].cuda(args.gpu, non_blocking=True)
 
         if epoch < args.curriculum:
-            output = model(inputs, tr_inputs, frame_idx=frame_idx)
+            output = model(inputs, tr_inputs, frame_idx=frame_idx, masks=train_masks)
         else:
-            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=frame_idx)
+            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=frame_idx, masks=train_masks)
 
         loss = loss_module.update_loss(inputs, tr_inputs, loss_mask, output, epoch)
 
@@ -230,7 +234,7 @@ def train(train_loader, model, loss_module, optimizer, epoch, args, running_loss
     rloss.append(epoch_loss)
     return losses.avg, running_loss, rloss 
 
-def validate(val_loader, model, loss_module, epoch, args):
+def validate(val_loader, model, loss_module, epoch, args, val_masks):
 
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -245,6 +249,7 @@ def validate(val_loader, model, loss_module, epoch, args):
     with torch.no_grad():
         end = time.time()
         for i, images in enumerate(val_loader):
+            frame_idx = i * args.frame_gap
 
             if args.gpu is not None:
                 inputs, tr_inputs, loss_mask, in_mask = images[0].cuda(args.gpu, non_blocking=True), \
@@ -257,7 +262,7 @@ def validate(val_loader, model, loss_module, epoch, args):
                             images[6].cuda(args.gpu, non_blocking=True)
 
             # compute output
-            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=i)
+            output = model(inputs, tr_inputs, gmtr_x1 = rot_im1, gmtr_x2 = rot_im2, gmtr_x3 = rot_im3, frame_idx=frame_idx, masks=val_masks)
             # Note that validate function only computes MSE loss
             loss = loss_module.criterion[1](output[0] * loss_mask, tr_inputs * loss_mask)
 
