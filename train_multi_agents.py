@@ -61,8 +61,8 @@ def main_worker(gpu, ngpus_per_node, args):
     #might have to do for each video in dir in the future
     traindir = os.path.join(args.data, 'train/video1')
     valdir = os.path.join(args.data, 'val/video2')
-    train_masks = run_demo(4, traindir, True, 'semionline', 800, './example/output', 'rat.mouse', 0.5)
-    val_masks = run_demo(4, valdir, True, 'semionline', 800, './example/output', 'rat.mouse', 0.5)
+    train_masks = run_demo(4, traindir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
+    val_masks = run_demo(4, valdir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
     #################################################################################
 
     # create model
@@ -145,7 +145,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         # evaluate on validation set every val_schedule epochs
         if epoch > 0 and epoch%args.val_schedule == 0:
-            test_loss = validate(val_loader, model, loss_module, epoch, args)
+            test_loss = validate(val_loader, model, loss_module, epoch, args, val_masks)
         else:
             test_loss = 10000  # set test_loss = 100000 when not using validate
 
