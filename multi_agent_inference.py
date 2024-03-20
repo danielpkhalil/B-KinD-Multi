@@ -11,17 +11,26 @@ import cv2
 from PIL import Image
 from utils import visualize_with_circles
 
+from Tracking_Anything_with_DEVA.demo.run_with_text import run_demo
+
 import numpy as np
 import os
 
 ## Input parameters #################################
-nKps = 10
+nkpts = 10
 num_agents = 4
 gpu = 0  # None if gpu is not available
 resume = 'checkpoint/custom_dataset/checkpoint.pth.tar'
 sample_path = 'sample_images'
-image_size = 512
+image_size = 256
+frame_gap=1
 #####################################################
+
+# SEGMENTATION HERE
+#################################################################################
+sample_masks = run_demo(4, sample_path, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output',
+                       'rat.mouse', 0.47)
+#################################################################################
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
@@ -29,35 +38,15 @@ normalize = transforms.Normalize(mean=mean, std=std)
 transform = transforms.Compose([
     transforms.Resize(image_size),
     transforms.CenterCrop(image_size),
-    transforms.ToTensor(),]) #remove normalize
+    transforms.ToTensor(),
+    normalize,]) #remove normalize
 
-sam_args['generator_args'] = {
-        'points_per_side': 30,
-        'pred_iou_thresh': 0.8,
-        'stability_score_thresh': 0.9,
-        'crop_n_layers': 1,
-        'crop_n_points_downscale_factor': 2,
-        'min_mask_region_area': 200,
-}
-# Set Text args
-'''
-parameter:
-grounding_caption: Text prompt to detect objects in key-frames
-box_threshold: threshold for box 
-text_threshold: threshold for label(text)
-box_size_threshold: If the size ratio between the box and the frame is larger than the box_size_threshold, the box will be ignored. This is used to filter out large boxes.
-reset_image: reset the image embeddings for SAM
-'''
-grounding_caption = "rat"
-box_threshold, text_threshold, box_size_threshold, reset_image = 0.35, 0.5, 0.5, True
-frame_idx = 0
-segtracker = SegTracker(segtracker_args, sam_args, aot_args)
-segtracker.restart_tracker()
+
 ## Load a model
 # create model
 output_shape = (int(image_size/4), int(image_size/4))
 #model = Model(nKps, output_shape=output_shape, num_agents=num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
-bkind_model = BKinD_multi(nKps, output_shape=output_shape, num_agents=num_agents, segtracker=segtracker, grounding_caption=grounding_caption, box_threshold=box_threshold, text_threshold=text_threshold, box_size_threshold=box_size_threshold, reset_image=reset_image)
+bkind_model = BKinD_multi(nkpts, output_shape=output_shape, num_agents=num_agents, frame_gap=frame_gap)
 
 #model = Model(nKps)
 if os.path.isfile(resume):
@@ -89,11 +78,12 @@ for i in range(len(sample_files)):
       im = Image.open(f)
       im = im.convert('RGB')
 
+    frame_idx = i
     im = torchvision.transforms.Resize((image_size, image_size))(im)
     im = transform(im)
     im = im.unsqueeze(0).cuda(gpu, non_blocking=True)
 
-    output = bkind_model(im, frame_idx=frame_idx)
+    output = bkind_model(im, frame_idx=frame_idx, masks=sample_masks)
 
     combined_mask = output[3][0][0][0].detach().cpu().numpy()
     for m in range(1, output[3].shape[0]):
@@ -116,6 +106,5 @@ for i in range(len(sample_files)):
     #cv2.namedWindow('image', cv2.WINDOW_NORMAL)
     #cv2.imshow('image', im_with_kps)
 
-    frame_idx += 1
 
 print("==> Output images saved in \'sample_images\' directory")
