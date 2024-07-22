@@ -61,8 +61,8 @@ def main_worker(gpu, ngpus_per_node, args):
     #might have to do for each video in dir in the future
     traindir = os.path.join(args.data, 'train/video1')
     valdir = os.path.join(args.data, 'val/video2')
-    train_masks = run_demo(4, traindir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
-    val_masks = run_demo(4, valdir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
+    train_masks = run_demo(4, traindir, True, 'semionline', 400, './Tracking_Anything_with_DEVA/example/output', 'ant body', 0.1)
+    val_masks = train_masks#run_demo(4, valdir, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output', 'rat.mouse', 0.47)
     #################################################################################
 
     # create model

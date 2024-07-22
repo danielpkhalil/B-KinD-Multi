@@ -17,8 +17,8 @@ import numpy as np
 import os
 
 ## Input parameters #################################
-nkpts = 10
-num_agents = 4
+nkpts = 3
+num_agents = 10
 gpu = 0  # None if gpu is not available
 resume = 'checkpoint/custom_dataset/checkpoint.pth.tar'
 sample_path = 'sample_images'
@@ -28,8 +28,8 @@ frame_gap=1
 
 # SEGMENTATION HERE
 #################################################################################
-sample_masks = run_demo(4, sample_path, True, 'semionline', 800, './Tracking_Anything_with_DEVA/example/output',
-                       'rat.mouse', 0.47)
+sample_masks = run_demo(4, sample_path, True, 'semionline', 400, './Tracking_Anything_with_DEVA/example/output',
+                       'ant body', 0.1) #adjust as needed
 #################################################################################
 
 mean = [0.485, 0.456, 0.406]

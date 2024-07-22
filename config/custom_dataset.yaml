@@ -1,10 +1,10 @@
 # Dataset
 dataset: custom_dataset
-data: data/rats
+data: data/new_ants
 
 # Training information
 workers: 4
-epochs: 10
+epochs: 20
 start_epoch: 0
 schedule: 20
 batch_size: 1
@@ -20,8 +20,8 @@ curriculum: 5
 # Path to save checkpoint
 checkpoint: checkpoint/custom_dataset
 # Specify number of keypoints
-nkpts: 10
-num_agents: 4
+nkpts: 3
+num_agents: 10
 
 # Hyperparameters
 image_size: 256
