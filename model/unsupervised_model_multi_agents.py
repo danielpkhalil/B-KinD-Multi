@@ -238,7 +238,7 @@ class Model(nn.Module):
         u_x, u_y, covs, _, confidence = self._mapTokpt(heatmap, x_masks, find_peaks=find_peaks, use_bbox=use_bbox)
         
         if tr_x is None:
-            return (u_x, u_y), kpt_out[-1], confidence, x_masks
+            return (u_x, u_y), kpt_out[-1], confidence, x_masks, None, confidence, covs
 
         tr_kpt_conds = []
         
@@ -751,12 +751,28 @@ class Model(nn.Module):
             single_mask = np.where(merged_mask == label, label, 0)
             pred_masks.append(single_mask)
 
+        # os.makedirs('MASKS', exist_ok=True)
+        # for label in unique_labels:
+        #     single_mask = np.where(merged_mask == label, 1, 0)  # Change here
+        #     pred_masks.append(single_mask)
+        #     single_mask = (single_mask * 255).astype(np.uint8)  # Normalize to 0-255
+        #     filename = f'MASKS/mask_{label}.png'
+        #     counter = 0
+        #     while os.path.exists(filename):
+        #         counter += 1
+        #         filename = f'MASKS/mask_{label}_{counter}.png'
+        #     Image.fromarray(single_mask).save(filename)
+
         for iii in range(len(pred_masks)):
             pred_masks[iii] = np.repeat(pred_masks[iii][np.newaxis, :, :], self.K, axis=0)
         if len(pred_masks) > 0:
             while len(pred_masks) < self.num_agents:
                 pred_masks.append(pred_masks[-1])
             del pred_masks[self.num_agents:]
+            print('lEEEEEENNNNNN')
+            print(len(pred_masks))
+            print('SHAPEEEEEEEEE')
+            print(pred_masks[0].shape)
 
             # Stack the arrays along a new axis
             masks = np.stack(pred_masks, axis=0)
