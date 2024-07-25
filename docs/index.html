@@ -6,7 +6,7 @@
         content="Deformable Neural Radiance Fields creates free-viewpoint portraits (nerfies) from casually captured videos.">
   <meta name="keywords" content="Nerfies, D-NeRF, NeRF">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nerfies: Deformable Neural Radiance Fields</title>
+  <title>Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision</title>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
@@ -235,17 +235,26 @@
     </div>
     <!--/ Abstract. -->
 
-    <!-- Paper video. -->
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3">Video</h2>
-        <div class="publication-video">
-          <iframe src="https://www.youtube.com/embed/MrKrnHhk8IA?rel=0&amp;showinfo=0"
-                  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-        </div>
+    <!-- Overview. -->
+    <section class="hero teaser">
+      <div class="container is-max-desktop">
+        <!-- Header for the Carousel Section -->
+        <h2 class="carousel-section-header">Overview</h2>
+        <img
+          id="teaser"
+          src="./static/images/method.pdf"
+          alt="Descriptive Text"
+          style="width: 100%; height: auto"
+        />
+        <h2 class="carousel-section-description">
+          The goal of B-KinD-multi is to discover semantically meaningful keypoints for multiple agents in behavioral videos without manual supervision. We extend the original B-KinD keypoint discovery framework to robustly handle multiple agents of similar appearance, where prior keypoint discovery methods struggle.
+          We use an encoder-decoder setup similar to <a href="https://sites.google.com/view/b-kind">previous methods</a>, but introduce a crucial segmentation step to isolate individual agent heatmaps and localize the keypoints per agent. As in the original B-KinD, we employ a reconstruction target based on spatiotemporal difference rather than full image reconstruction.
+          In behavioral videos with multiple agents, the camera is generally fixed with respect to the world, such that the background is largely stationary and the agents (\eg multiple mice moving in an enclosure) are the primary sources of motion. Spatiotemporal differences continue to provide a strong cue to infer location and movements of agents, but now we must differentiate between multiple moving entities.
+          Our approach first applies decoupled video segmentation to isolate individual agents in each frame. This segmentation step is critical for distinguishing between agents, especially of similar appearance. Following segmentation, we apply the modified B-KinD framework to each segmented region independently, allowing for keypoint discovery on a per-agent basis.
+        </h2>
       </div>
-    </div>
-    <!--/ Paper video. -->
+    </section>
+    <!--/ Overview. -->
   </div>
 </section>
 
