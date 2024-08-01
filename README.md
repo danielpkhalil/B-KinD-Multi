@@ -1,29 +1,68 @@
-# B-KinD: Self-supervised keypoint Discovery in Behavioral Videos
+# B-KinD-Multi: Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neuroethology/BKinD/blob/main/behavioral_keypoint_discovery_demo.ipynb)
 
-We will run B-KinD on your videos by request! Please fill out [https://forms.gle/k5gwNxws8xMEEzUe6](https://forms.gle/k5gwNxws8xMEEzUe6).
-
-<p align="center"><img src="figs/bkind_fig.png" width="80%" alt="" /></p> 
+<p align="center"><img src="docs/static/images/cover.png" width="80%" alt="" /></p> 
 
 
 Implementation from the paper:
->Jennifer J. Sun*, Serim Ryou*, Roni Goldshmid, Brandon Weissbourd, John Dabiri, David J. Anderson, Ann Kennedy, Yisong Yue, Pietro Perona, [Self-Supervised Keypoint Discovery in Behavioral Videos](https://arxiv.org/pdf/2112.05121.pdf). In Conference on Computer Vision and Pattern Recognition (CVPR), 2022
+>Daniel Khalil, Christina Liu, Pietro Perona, Jennifer Sun, Markus Marks, [Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision](https://arxiv.org/pdf/2112.05121.pdf). In Conference on Computer Vision and Pattern Recognition (CVPR), 2022
 
-B-KinD discovers keypoints without the need for bounding box annotations or manual keypoint, and works on a range of organisms including mice, humans, flies, jellyfish and tree. The discovered keypoints and additional shape features are directly applicable to downstream tasks including behavior classification and pose regression!
+B-KinD-multi discovers keypoints without the need for bounding box annotations or manual keypoint, and works on a range of organisms.
 
 <p align="center"><img src="figs/bkind_gif.gif" width="60%" alt="" /></p> 
 
-Our code currently supports running keypoint discovery on your own videos, where there's relatively stationary background and no significant occlusion. Features in progress (let us know in the issues if there's anything else you'd like to see!):
-- Support for keypoint discovery on bounding boxes
-- Support for multiple similar agents
+Our code currently supports running keypoint discovery on your own videos, where there's relatively stationary background and no significant occlusion. 
 
 # Quick Start
-Follow these instructions if you would like to quickly try out training B-KinD on CalMS21 and Human 3.6M and using discovered keypoints in downstream tasks. Please see these instructions on [setting up a new dataset](https://github.com/neuroethology/BKinD#your-own-dataset) to apply B-KinD on your own dataset.
+To set up the environment, here are all the install commands we used (you may need to change the cudatoolkit version depending on your GPU):
 
-To set up the environment, you can use the provided yml file with ```conda env create -f bkind_env.yml```
+```conda create --name env python=3.10.12```
 
-Alternatively to using the yml file, here are all the install commands we used (you may need to change the cudatoolkit version depending on your GPU):
+```conda activate env```
+
+```git clone https://github.com/hkchengrex/Grounded-Segment-Anything```
+
+```conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia```
+
+```wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda_11.7.0_515.43.04_linux.run```
+
+```sudo apt install gcc```
+
+```sudo sh cuda_11.7.0_515.43.04_linux.run```
+
+```cd Grounded-Segment-Anything/```
+
+```export BUILD_WITH_CUDA=True```
+
+```export AM_I_DOCKER=False```
+
+```export CUDA_HOME=/usr/local/cuda-11.7```
+
+```cd Grounded-Segment-Anything/```
+
+```export PATH=/usr/local/cuda-11.7/bin${PATH:+:${PATH}}```
+
+```export LD_LIBRARY_PATH=/usr/local/cuda-11.7/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}```
+
+```export PATH=$PATH:/usr/local/bin/aws```
+
+```export PATH=$PATH:[MYHIP]/bin```
+
+```sudo apt-get install g++```
+
+```pip install -e GroundingDINO (may have to --force-reinstall if it doesn't install first time without errors)```
+
+```pip install -q -e segment_anything```
+
+```git clone https://github.com/danielpkhalil/Tracking-Anything-with-DEVA```
+
+```cd Tracking-Anything-with-DEVA/```
+
+```pip install -q -e .```
+
+```bash scripts/download_models.sh```
+
 
 ```conda install pytorch torchvision cudatoolkit=11.3 -c pytorch```
 
@@ -34,6 +73,10 @@ Alternatively to using the yml file, here are all the install commands we used (
 ```pip install piq```
 
 ```pip install opencv-python```
+
+```pip install seaborn```
+
+```pip install imageio```
 
 ## CalMS21
 1. Download CalMS21 dataset: https://data.caltech.edu/records/1991
@@ -122,7 +165,7 @@ data/custom_dataset
 3. Set up the configuration of your data in ``config/custom_dataset.yaml``
 4. Run command
 ```
-python train_video.py --config config/custom_dataset.yaml
+python train_multi_agents.py --config config/custom_dataset.yaml
 ```
 Use the ```--visualize``` flag to visualize examples during training. This can be helpful to see when the keypoints have converged. 
 
@@ -131,6 +174,9 @@ Use the ```--visualize``` flag to visualize examples during training. This can b
 python extract_features.py --train_dir [images from train split] --test_dir [images from test split]
  --resume [checkpoint path] --output_dir [output directory to store keypoints] --imsize [training image size] --nkpts [number of discovered keypoints]
 ```
+6. To run inference on new frames, put images and a directory named "sample_images" and run command
+
+``` python multi_agent_inference.py ```
 
 ## License
 
@@ -149,7 +195,3 @@ Our code is available under the [Apache License 2.0](https://www.apache.org/lice
 [1] Sun et al., The Multi-Agent Behavior Dataset: Mouse Dyadic Social Interactions. NeurIPS 2021.
 
 [2] Zhang et al., Unsupervised discovery of object landmarks as structural representations. CVPR 2018.
-# BKinD_Multi
-# BKinD_Multi
-# BKinD_Multi
-# BKinD_Multi
