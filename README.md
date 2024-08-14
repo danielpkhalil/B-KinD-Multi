@@ -1,6 +1,6 @@
 # B-KinD-Multi: Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neuroethology/BKinD/blob/main/behavioral_keypoint_discovery_demo.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/19cxahDPwxu_qbOLKocUbDm6Rm9gjmFk4?usp=sharing)
 
 <p align="center"><img src="docs/static/images/cover.png" width="80%" alt="" /></p> 
 
@@ -8,7 +8,7 @@
 Implementation from the paper:
 >Daniel Khalil, Christina Liu, Pietro Perona, Jennifer Sun, Markus Marks, [Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision](https://arxiv.org/pdf/2112.05121.pdf). In Conference on Computer Vision and Pattern Recognition (CVPR), 2022
 
-B-KinD-multi discovers keypoints without the need for bounding box annotations or manual keypoint, and works on a range of organisms.
+B-KinD-multi discovers keypoints without the need for bounding box annotations or manual keypoint, and works on a range of organisms and any number of agents.
 
 <p align="center"><img src="figs/bkind_gif.gif" width="60%" alt="" /></p> 
 
