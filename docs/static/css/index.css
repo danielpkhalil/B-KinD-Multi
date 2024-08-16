@@ -118,6 +118,7 @@ body {
   margin: 5px;
   overflow: hidden;
   border: 1px solid #000; /* Set border color to black */
+  background-color: #000; /* Set background color to black */
   border-radius: 10px;
   padding: 0;
   font-size: 0;
