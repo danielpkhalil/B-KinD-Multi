@@ -121,6 +121,7 @@ body {
   border-radius: 10px;
   padding: 0;
   font-size: 0;
+  float: none; /* Remove left and right floats */
 }
 
 .results-carousel video {
