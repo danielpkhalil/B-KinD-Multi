@@ -127,6 +127,21 @@ body {
   margin: 0;
 }
 
+.results-carousel .item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.results-carousel .item img {
+  max-width: 100%;
+  height: auto;
+}
+
+.slider-container {
+  align-items: center;
+}
+
 
 .interpolation-panel {
   background: #f5f5f5;
