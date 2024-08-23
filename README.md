@@ -10,7 +10,7 @@ Implementation from the paper:
 
 B-KinD-multi discovers keypoints without the need for bounding box annotations or manual keypoint, and works on a range of organisms and any number of agents.
 
-<p align="center"><img src="figs/bkind_gif.gif" width="60%" alt="" /></p> 
+<p align="center"><img src="figs/multi_agent_keypoints.svg" width="60%" alt="" /></p> 
 
 Our code currently supports running keypoint discovery on your own videos, where there's relatively stationary background and no significant occlusion. 
 
@@ -113,29 +113,6 @@ python classifier/train_task1.py **
 ** Need to set train_data_path and test_data_path inside the train_task1.py file to the files generated from the previous step.
 
 
-## Human 3.6M
-1. Download Human 3.6M dataset: http://vision.imar.ro/human3.6m/description.php (Ask for permission to authors)
-2. Extract frames from videos
-   - Our implementation uses this code (https://github.com/anibali/h36m-fetch) for frame extraction
-   - Dataloader for h36m (dataloader/h36m_dataset.py) has to be updated if you extract frames using a different code.
-3. Run command
-```
-python train_video.py --config config/H36M.yaml
-```
-
-### Pose regression on Simplified Human 3.6M
-1. Once you are done with training keypoint discovery model, evaluate pose regression task on Simplified Human 3.6M dataset
-2. Simplified Human 3.6M Dataset is publicly available here from [2]: http://fy.z-yt.net/files.ytzhang.net/lmdis-rep/release-v1/human3.6m/human_images.tar.gz
-3. Run command
-```
-python test_simplehuman36m.py [path_to_simplified_h36m_dataset**] --checkpoint [path_to_model_directory] --batch-size [N] --gpu 0 --nkpts [K] --resume [path_to_model_file]
-```
-*Note that [path_to_h36m_dataset] should end with 'processed' directory
-**[path_to_simplified_h36m_dataset] should end with 'human_images' directory
-
-Regression results may vary since our method does not use any keypoint label as a supervision signal while training the keypoint discovery model.
-
-
 ## Your own dataset
 Please follow the instructions below if you would like to train B-KinD on your own video dataset! Note that the code currently does *not* support: tracking for multiple agents with similar appearance, videos with a lot of background motion, and/or videos with a lot of occlusion or self-occlusion. 
 
@@ -182,16 +159,12 @@ python extract_features.py --train_dir [images from train split] --test_dir [ima
 
 Please refer to our paper for details and consider citing it if you find the code useful:
 ```
-@article{bkind2021,
-  title={Self-Supervised Keypoint Discovery in Behavioral Videos},
-  author={Sun, Jennifer J and Ryou, Serim and Goldshmid, Roni and Weissbourd, Brandon and Dabiri, John and Anderson, David J and Kennedy, Ann and Yue, Yisong and Perona, Pietro},
-  journal={arXiv preprint arXiv:2112.05121},
-  year={2021}
+@article{bkindmulti2024,
+  author    = {Khalil, Liu, Perona, Sun, Marks},
+  title     = {Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision},
+  journal   = {},
+  year      = {2024},
 }
 ```
 
 Our code is available under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-
-[1] Sun et al., The Multi-Agent Behavior Dataset: Mouse Dyadic Social Interactions. NeurIPS 2021.
-
-[2] Zhang et al., Unsupervised discovery of object landmarks as structural representations. CVPR 2018.
