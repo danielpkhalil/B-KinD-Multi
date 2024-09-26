@@ -162,7 +162,7 @@ Please refer to our paper for details and consider citing it if you find the cod
 @article{bkindmulti2024,
   author    = {Khalil, Liu, Perona, Sun, Marks},
   title     = {Learning Keypoints for Multi-Agent Behavior Analysis using Self-Supervision},
-  journal   = {},
+  journal   = {arXiv preprint arXiv:2409.09455},
   year      = {2024},
 }
 ```
